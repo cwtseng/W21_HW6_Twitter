@@ -1,13 +1,13 @@
 #########################################
-##### Name:                         #####
-##### Uniqname:                     #####
+##### Name: Chien-wei Tseng         #####
+##### Uniqname: cwtseng             #####
 #########################################
 
 from requests_oauthlib import OAuth1
 import json
 import requests
 
-import hw6_secrets_starter as secrets # file that contains your OAuth credentials
+import secrets_starter_code as secrets # file that contains your OAuth credentials
 
 CACHE_FILENAME = "twitter_cache.json"
 CACHE_DICT = {}
@@ -73,7 +73,7 @@ def save_cache(cache_dict):
     dumped_json_cache = json.dumps(cache_dict)
     fw = open(CACHE_FILENAME,"w")
     fw.write(dumped_json_cache)
-    fw.close() 
+    fw.close()
 
 
 def construct_unique_key(baseurl, params):
@@ -96,8 +96,14 @@ def construct_unique_key(baseurl, params):
     string
         the unique key as a string
     '''
-    #TODO Implement function
-    pass
+    param_strings = []
+    connector = '_'
+    for k in params.keys():
+        param_strings.append(f'{k}_{params[k]}')
+    param_strings.sort()
+    unique_key = baseurl + connector +  connector.join(param_strings)
+    print(unique_key)
+    return unique_key
 
 
 def make_request(baseurl, params):
@@ -116,8 +122,8 @@ def make_request(baseurl, params):
         the data returned from making the request in the form of 
         a dictionary
     '''
-    #TODO Implement function
-    pass
+    response = requests.get(baseurl, params=params, auth=oauth)
+    return response.json()
 
 
 def make_request_with_cache(baseurl, hashtag, count):
@@ -148,8 +154,18 @@ def make_request_with_cache(baseurl, hashtag, count):
         the results of the query as a dictionary loaded from cache
         JSON
     '''
-    #TODO Implement function
-    pass
+    params = {}
+    params['q'] = hashtag
+    params['count'] = count
+    request_key = construct_unique_key(baseurl, params)
+    if request_key in CACHE_DICT.keys():
+        print("cache hit!", request_key)
+        return CACHE_DICT[request_key]
+    else:
+        print("cache miss!", request_key)
+        CACHE_DICT[request_key] = make_request(baseurl, params)
+        save_cache(CACHE_DICT)
+        return CACHE_DICT[request_key]
 
 
 def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
@@ -171,8 +187,29 @@ def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
         queried in make_request_with_cache()
 
     '''
-    # TODO: Implement function 
-    pass
+    result = tweet_data['statuses']
+    cooccur_hashtag_dict = {}
+    for i in range(len(result)):
+        cooccur_hashtag_list = result[i]['entities']['hashtags']
+        # print(cooccur_hashtag_list)
+        if cooccur_hashtag_list:
+            for j in range(len(cooccur_hashtag_list)):
+                if cooccur_hashtag_list[j]['text'] in cooccur_hashtag_dict.keys():
+                    cooccur_hashtag_dict[cooccur_hashtag_list[j]['text']] = cooccur_hashtag_dict[cooccur_hashtag_list[j]['text']] + 1
+                else:
+                    cooccur_hashtag_dict[cooccur_hashtag_list[j]['text']] = 1
+
+    hashtag_to_ignore = hashtag_to_ignore[1:].lower()
+    # print("======= debug =========")
+    # print(hashtag_to_ignore)
+    # print(cooccur_hashtag_dict)
+    # print("======= end =========")
+    max = 0
+    for key, value in cooccur_hashtag_dict.items():
+        if value > max and key.lower() != hashtag_to_ignore:
+            max_str = key
+            max = value
+    return '#'+ max_str
     ''' Hint: In case you're confused about the hashtag_to_ignore 
     parameter, we want to ignore the hashtag we queried because it would 
     definitely be the most occurring hashtag, and we're trying to find 
@@ -199,3 +236,4 @@ if __name__ == "__main__":
     tweet_data = make_request_with_cache(baseurl, hashtag, count)
     most_common_cooccurring_hashtag = find_most_common_cooccurring_hashtag(tweet_data, hashtag)
     print("The most commonly cooccurring hashtag with {} is {}.".format(hashtag, most_common_cooccurring_hashtag))
+
